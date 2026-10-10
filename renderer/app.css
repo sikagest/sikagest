@@ -200,22 +200,27 @@ table.tbl { width: 100%; border-collapse: collapse; }
   body { background: #fff; }
   #app, #modal-root, #toasts { display: none !important; }
   #print-area { display: block; color: #000; }
-  .inv { font: 12px/1.4 Arial, sans-serif; }
-  .inv table { width: 100%; border-collapse: collapse; }
-  .inv th, .inv td { border-bottom: 1px solid #ccc; padding: 6px 4px; text-align: left; }
-  .inv .r { text-align: right; }
-  .inv h1 { font-size: 20px; margin: 0; }
-  .inv .head { display: flex; justify-content: space-between; margin-bottom: 20px; }
-  .inv .tot { width: 260px; margin-left: auto; margin-top: 12px; }
-  .inv .tot div { display: flex; justify-content: space-between; padding: 3px 0; }
-  .inv .tot .g { font-weight: bold; font-size: 15px; border-top: 2px solid #000; padding-top: 6px; }
-  .ticket { width: 72mm; font: 11px/1.35 "Courier New", monospace; }
-  .ticket .c { text-align: center; }
-  .ticket table { width: 100%; border-collapse: collapse; }
-  .ticket td { padding: 2px 0; vertical-align: top; }
-  .ticket .r { text-align: right; }
-  .ticket hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
 }
+/* Mise en page des documents (impression et aperçu) */
+.inv { font: 12px/1.4 Arial, sans-serif; }
+.inv table { width: 100%; border-collapse: collapse; }
+.inv th, .inv td { border-bottom: 1px solid #ccc; padding: 6px 4px; text-align: left; }
+.inv .r { text-align: right; }
+.inv h1 { font-size: 20px; margin: 0; }
+.inv .head { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.inv .tot { width: 260px; margin-left: auto; margin-top: 12px; }
+.inv .tot div { display: flex; justify-content: space-between; padding: 3px 0; }
+.inv .tot .g { font-weight: bold; font-size: 15px; border-top: 2px solid #000; padding-top: 6px; }
+.ticket { width: 72mm; font: 11px/1.35 "Courier New", monospace; }
+.ticket .c { text-align: center; }
+.ticket table { width: 100%; border-collapse: collapse; }
+.ticket td { padding: 2px 0; vertical-align: top; }
+.ticket .r { text-align: right; }
+.ticket hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
+.pv-desk { background: #e9e6e1; border-radius: 8px; padding: 22px; display: flex; justify-content: center; max-height: 68vh; overflow: auto; }
+.pv-paper { background: #fff; color: #000; box-shadow: 0 2px 14px rgba(0,0,0,.18); }
+.pv-a4 { width: 182mm; min-height: 240mm; padding: 14mm; box-sizing: content-box; zoom: .82; }
+.pv-ticket { width: 72mm; padding: 4mm; }
 
 /* ---------- Licence ---------- */
 .lic-bar { display: flex; align-items: center; gap: 10px; padding: 9px 28px; font-size: 13.5px; border-bottom: 1px solid var(--line); }

@@ -525,8 +525,18 @@ function printHtml(html, format) {
   let style = $('#page-style');
   if (!style) { style = document.createElement('style'); style.id = 'page-style'; document.head.appendChild(style); }
   style.textContent = format === 'ticket' ? '@page { size: 80mm auto; margin: 3mm; }' : '@page { size: A4; margin: 14mm; }';
-  $('#print-area').innerHTML = html;
-  setTimeout(() => window.print(), 50);
+  // Aperçu avant impression (la fenêtre d'impression de Windows n'en affiche pas pour ce logiciel)
+  const ticket = format === 'ticket';
+  modal({
+    title: ticket ? 'Aperçu du ticket' : 'Aperçu avant impression', wide: !ticket,
+    body: `<div class="pv-desk"><div class="pv-paper ${ticket ? 'pv-ticket' : 'pv-a4'}">${html}</div></div>`,
+    foot: `<button class="btn" data-close>Fermer</button><button class="btn primary" data-print>${icon('print')} Imprimer</button>`,
+    onMount: (el, close) => {
+      const go = () => { close(); $('#print-area').innerHTML = html; setTimeout(() => window.print(), 50); };
+      $('[data-print]', el).addEventListener('click', go);
+      setTimeout(() => $('[data-print]', el).focus(), 40);
+    },
+  });
 }
 function printDoc(doc, kind = 'vente', format = null) {
   const s = S.settings;
