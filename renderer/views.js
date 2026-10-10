@@ -765,6 +765,7 @@ function renderCloudCard() {
     html += row('Compte en ligne', esc(c.phone || ''));
     html += row('Dernier envoi', c.lastUpload ? esc(backupAgo(c.lastUpload)) : 'pas encore', c.lastUpload && (Date.now() - new Date(c.lastUpload)) < 3 * 864e5 ? 'ok' : 'warn');
     if (c.offlineSince) html += row('Internet', `indisponible depuis ${esc(backupAgo(c.offlineSince))}`, 'warn');
+    if (c.unsent) html += row('Modifications récentes', c.offlineSince ? 'en attente d\'Internet' : 'envoi dans quelques minutes', 'warn');
   }
   box.innerHTML = html;
   act.innerHTML = `${c.active ? '<button class="btn" id="c-sync">Envoyer maintenant</button>' : ''}${isAdmin() ? '<button class="btn ghost" id="c-restore">Récupérer mes données en ligne…</button>' : ''}`;

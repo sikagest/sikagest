@@ -90,7 +90,7 @@ Dans **SikaGest-Admin.html → Installations en direct**, vous voyez tous vos cl
 
 ## Sauvegarde en ligne chiffrée
 
-- Dès qu'un **administrateur** se connecte, SikaGest crée le compte en ligne de l'entreprise (identifié par le **téléphone de l'entreprise**), puis envoie une copie **chiffrée** des données toutes les 3 heures quand Internet est disponible. Le serveur garde les 5 derniers jours.
+- Dès qu'un **administrateur** se connecte, SikaGest crée le compte en ligne de l'entreprise (identifié par le **téléphone de l'entreprise**), puis envoie une copie **chiffrée et toujours à jour** des données : quelques minutes après chaque modification (au plus une fois toutes les 10 minutes), à chaque démarrage et à la fermeture du logiciel, dès qu'Internet est disponible. Le serveur garde les 3 derniers envois et une copie par jour sur 7 jours. Avant de remplacer quoi que ce soit, le logiciel affiche le contenu de la copie (entreprise, nombre de ventes et de produits, date) et demande confirmation.
 - Le chiffrement est fait sur le PC du client : ni vous ni Supabase ne pouvez lire les ventes.
 - **Nouveau PC** : écran de bienvenue → « Récupérer mes données » → téléphone + identifiant + mot de passe d'un administrateur. On peut aussi le faire depuis **Paramètres → Sauvegarde en ligne**.
 - **Mot de passe oublié + nouveau PC** : le client clique sur « Mot de passe oublié ? » dans cette fenêtre et vous envoie son code de demande. Dans **SikaGest-Admin.html → Secours sauvegarde en ligne**, vous collez le code et obtenez le code de secours. **Vérifiez d'abord que la personne écrit bien depuis le numéro de l'entreprise affiché.**

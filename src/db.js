@@ -732,7 +732,9 @@ function checkFile(file, nativeBinding) {
     const missing = REQUIRED_TABLES.filter((t) => !tables.has(t));
     if (missing.length) return { ok: false, error: 'ce n\'est pas une sauvegarde SikaGest' };
     const n = (t) => Number(db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n);
-    return { ok: true, sales: n('sales'), products: n('products') };
+    const one = (sql) => { try { const r = db.prepare(sql).get(); return r ? Object.values(r)[0] : null; } catch (e) { return null; } };
+    return { ok: true, sales: n('sales'), products: n('products'), users: n('users'),
+      shop: one("SELECT value FROM settings WHERE key='company_name'"), lastSale: one('SELECT MAX(date) FROM sales') };
   } catch (e) {
     return { ok: false, error: `fichier illisible (${e.message})` };
   } finally {

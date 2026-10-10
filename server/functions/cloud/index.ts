@@ -14,7 +14,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 const BUCKET = 'backups';
-const KEEP_VERSIONS = 5;
+const KEEP_LAST = 3;   // les 3 derniers envois
+const KEEP_DAYS = 7;   // + le dernier envoi de chacun des 7 derniers jours
 const MAX_SIZE = 25 * 1024 * 1024;
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'apikey, content-type, x-account, x-secret, x-action', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 
@@ -124,11 +125,15 @@ const actions: Record<string, (b: Record<string, unknown>, req: Request) => Prom
     } else body = new Uint8Array(await req.arrayBuffer());
     if (body.length < 64 || body.length > MAX_SIZE) throw new Fail(413, 'Fichier trop gros ou vide.');
     if (new TextDecoder().decode(body.subarray(0, 4)) !== 'SKG1') throw new Fail(400, 'Fichier non chiffré refusé.');
-    const day = new Date().toISOString().slice(0, 10);
-    const { error } = await db.storage.from(BUCKET).upload(`${acc.id}/${day}.bin`, body, { upsert: true, contentType: 'application/octet-stream' });
+    // Un fichier par envoi (jamais d'écrasement), nommé par date et heure
+    const stamp = new Date().toISOString().replace(/:/g, '-').replace(/\.\d+Z$/, '');
+    const { error } = await db.storage.from(BUCKET).upload(`${acc.id}/${stamp}.bin`, body, { upsert: true, contentType: 'application/octet-stream' });
     if (error) throw new Fail(500, `Envoi impossible (${error.message}).`);
-    const files = await latestFile(acc.id);
-    const old = files.slice(KEEP_VERSIONS).map((f) => `${acc.id}/${f.name}`);
+    const files = await latestFile(acc.id); // du plus récent au plus ancien
+    const keep = new Set(files.slice(0, KEEP_LAST).map((f) => f.name));
+    const days = new Set<string>();
+    for (const f of files) { const d = f.name.slice(0, 10); if (!days.has(d) && days.size < KEEP_DAYS) { days.add(d); keep.add(f.name); } }
+    const old = files.filter((f) => !keep.has(f.name)).map((f) => `${acc.id}/${f.name}`);
     if (old.length) await db.storage.from(BUCKET).remove(old);
     const at = new Date().toISOString();
     await db.from('cloud_accounts').update({ last_backup_at: at, last_backup_size: body.length }).eq('id', acc.id);

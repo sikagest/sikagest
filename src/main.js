@@ -24,6 +24,8 @@ let store;
 let win;
 let backups;
 let cloud;
+// Actions qui ne modifient rien (pas besoin d'envoyer une nouvelle sauvegarde en ligne)
+const READ_ONLY = /^(auth\.(status|login|logout)|license\.status|recovery\.request|settings\.get|reports\.\w+|\w+\.(list|get|moves))$/;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
@@ -82,6 +84,7 @@ app.whenReady().then(() => {
   ipcMain.handle('api', (_e, method, args) => {
     try {
       const data = store.call(method, args);
+      if (cloud && !READ_ONLY.test(method)) cloud.markDirty(); // modification : à envoyer en ligne
       if (method === 'settings.save' && cloud) cloud.sync().catch(() => {});
       return { ok: true, data };
     }
@@ -133,7 +136,7 @@ app.whenReady().then(() => {
 
   // Sauvegarde en ligne chiffrée (dès qu'Internet est disponible)
   cloud = createCloud({
-    getStore: () => store, fetchImpl: (...a) => net.fetch(...a), workDir: DATA_DIR, latestSnapshot: () => backups.latestFile(),
+    getStore: () => store, fetchImpl: (...a) => net.fetch(...a), workDir: DATA_DIR,
     serverConfig: () => ({ ...(require('../package.json').server || {}), ...(process.env.SIKAGEST_SERVER_URL ? { url: process.env.SIKAGEST_SERVER_URL } : {}) }),
   });
   cloud.start();
@@ -144,10 +147,25 @@ app.whenReady().then(() => {
   ipcMain.handle('cloud.status', () => cloud.status());
   ipcMain.handle('cloud.sync', cloudCall(() => cloud.sync({ forceUpload: true })));
   // Récupération avec identifiant + mot de passe
+  // Montre ce que contient la copie en ligne et demande confirmation avant de remplacer quoi que ce soit
+  const confirmCloud = async (file, chk, backupAt) => {
+    const when = backupAt ? new Date(backupAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : 'inconnue';
+    const lastSale = chk.lastSale ? String(chk.lastSale).slice(0, 16).replace('T', ' ') : 'aucune';
+    const empty = chk.users === 0 || (chk.sales === 0 && chk.products === 0);
+    const res = await dialog.showMessageBox(win, {
+      type: empty ? 'warning' : 'question', buttons: ['Annuler', 'Récupérer ces données'], defaultId: empty ? 0 : 1, cancelId: 0,
+      title: 'Récupérer mes données en ligne',
+      message: empty ? 'Attention : cette sauvegarde en ligne est presque vide.' : 'Voici la sauvegarde trouvée en ligne :',
+      detail: `Entreprise : ${chk.shop || '—'}\nSauvegarde du : ${when}\n${chk.sales} vente(s), ${chk.products} produit(s), ${chk.users} utilisateur(s)\nDernière vente : ${lastSale}\n\nLes données actuelles de cet ordinateur seront remplacées (une copie est gardée dans les sauvegardes automatiques).`,
+    });
+    if (res.response !== 1) { try { fs.unlinkSync(file); } catch (e) { /* rien */ } return false; }
+    return true;
+  };
   ipcMain.handle('cloud.restore', cloudCall(async (a) => {
     const r = await cloud.restore(a);
     const v = restoreFromFile(r.file);
     if (!v.ok) throw new Error(v.error);
+    if (!(await confirmCloud(r.file, v.chk, r.backupAt))) return { cancelled: true };
     const done = replaceDatabase(r.file);
     if (!done.ok) throw new Error(done.error);
     return { shop: r.shop, backupAt: r.backupAt, sales: v.chk.sales, products: v.chk.products };
@@ -158,6 +176,7 @@ app.whenReady().then(() => {
     const r = await cloud.rescueFinish(a);
     const v = restoreFromFile(r.file);
     if (!v.ok) throw new Error(v.error);
+    if (!(await confirmCloud(r.file, v.chk, r.backupAt))) return { cancelled: true };
     const done = replaceDatabase(r.file);
     if (!done.ok) throw new Error(done.error);
     return { backupAt: r.backupAt, sales: v.chk.sales, products: v.chk.products, users: store.allowReset() };
@@ -199,8 +218,10 @@ function ensureDesktopShortcut() {
   } catch (e) { /* non bloquant */ }
 }
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
   if (backups) { try { backups.onClose(); } catch (e) { /* rien */ } }
+  // Dernières modifications envoyées en ligne avant de fermer (15 secondes au plus)
+  if (cloud) { try { await cloud.flush(15000); } catch (e) { /* rien */ } }
   if (store) { store.checkpoint(); store.close(); }
   app.quit();
 });

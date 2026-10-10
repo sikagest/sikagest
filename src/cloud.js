@@ -15,7 +15,8 @@ const fs = require('fs');
 const path = require('path');
 const recovery = require('./recovery');
 
-const UPLOAD_EVERY_H = 3;
+const MIN_GAP_MIN = 10;        // au plus un envoi toutes les 10 minutes quand des données changent
+const SAFETY_EVERY_H = 24;     // et au moins un envoi par jour, même sans changement
 const SCRYPT = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 const MAGIC = Buffer.from('SKG1');
 
@@ -83,10 +84,13 @@ function openRescueAnswer(answer, accountId, rPriv) {
 }
 
 // ---------- Module ----------
-function createCloud({ getStore, serverConfig, fetchImpl, workDir, latestSnapshot, now = () => new Date() }) {
+function createCloud({ getStore, serverConfig, fetchImpl, workDir, now = () => new Date() }) {
   let running = null;
   let timer = null;
   let rescue = null; // demande de secours en cours (en mémoire seulement)
+  // Des données ont changé depuis le dernier envoi. Vrai au démarrage : un envoi frais par lancement.
+  let dirty = true;
+  const markDirty = () => { dirty = true; };
 
   const get = (k) => getStore().getPrivate(k);
   const set = (k, v) => getStore().setPrivate(k, v);
@@ -190,16 +194,22 @@ function createCloud({ getStore, serverConfig, fetchImpl, workDir, latestSnapsho
         set('cloud_phone', r.phone);
         set('cloud_shop', settings.company_name || '');
       }
-      // 4. Envoi de la sauvegarde chiffrée
+      // 4. Envoi de la sauvegarde chiffrée : toujours une copie FRAÎCHE de la base, jamais une ancienne copie
       const last = get('cloud_last_upload');
-      if (forceUpload || !last || now() - new Date(last) >= UPLOAD_EVERY_H * 3600 * 1000) {
-        const file = latestSnapshot();
-        if (file) {
-          const blob = encryptBackup(Buffer.from(get('cloud_dk'), 'hex'), fs.readFileSync(file));
+      const age = last ? now() - new Date(last) : Infinity;
+      if (forceUpload || (dirty && age >= MIN_GAP_MIN * 60000) || age >= SAFETY_EVERY_H * 3600 * 1000) {
+        dirty = false; // les modifications faites pendant l'envoi seront envoyées la prochaine fois
+        const tmp = path.join(workDir, `envoi-en-ligne-${process.pid}.tmp`);
+        let plain;
+        try { getStore().snapshot(tmp); plain = fs.readFileSync(tmp); }
+        finally { try { fs.unlinkSync(tmp); } catch (e) { /* absent */ } }
+        const blob = encryptBackup(Buffer.from(get('cloud_dk'), 'hex'), plain);
+        try {
           await call('put', null, { binary: blob, account, secret, timeoutMs: 10 * 60000 });
-          set('cloud_last_upload', now().toISOString());
-          set('cloud_last_size', String(blob.length));
-        }
+        } catch (e) { dirty = true; throw e; }
+        set('cloud_last_upload', now().toISOString());
+        set('cloud_last_size', String(blob.length));
+        dirty = false; // l'écriture de la date ci-dessus n'est pas une modification à envoyer
       }
       setError(null);
     } catch (e) {
@@ -221,7 +231,7 @@ function createCloud({ getStore, serverConfig, fetchImpl, workDir, latestSnapsho
     try { err = JSON.parse(get('cloud_error') || 'null'); } catch (e) { err = null; }
     const pending = Object.keys(getJson('cloud_pending_logins', {}));
     return {
-      enabled: !!get('cloud_dk'), active: !!get('cloud_account'), phone: get('cloud_phone') || null,
+      enabled: !!get('cloud_dk'), active: !!get('cloud_account'), phone: get('cloud_phone') || null, unsent: dirty,
       lastUpload: get('cloud_last_upload') || null, offlineSince: get('cloud_offline_since') || null,
       error: err, pendingLogins: pending.length,
     };
@@ -264,11 +274,16 @@ function createCloud({ getStore, serverConfig, fetchImpl, workDir, latestSnapsho
 
   function start() {
     setTimeout(() => sync().catch(() => {}), 20000);
-    timer = setInterval(() => sync().catch(() => {}), 15 * 60 * 1000);
+    timer = setInterval(() => sync().catch(() => {}), 2 * 60 * 1000);
     if (timer.unref) timer.unref();
   }
+  // À la fermeture : envoie les dernières modifications (attend au plus « maxMs »)
+  function flush(maxMs = 15000) {
+    if (!dirty || !get('cloud_account')) return Promise.resolve();
+    return Promise.race([sync({ forceUpload: true }).catch(() => {}), new Promise((r) => setTimeout(r, maxMs))]);
+  }
 
-  return { start, sync, status, onAdminPassword, restore, rescueStart, rescueFinish };
+  return { start, sync, status, onAdminPassword, restore, rescueStart, rescueFinish, markDirty, flush, isDirty: () => dirty };
 }
 
 module.exports = { createCloud, normPhone, deriveLogin, gcmEncrypt, gcmDecrypt, vendorWrap, encryptBackup, decryptBackup, rescueRequestCode, openRescueAnswer, rawPub, pubFromRaw, hkdf };

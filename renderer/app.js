@@ -450,6 +450,7 @@ function cloudRestoreModal({ replacing = false, phone = '' } = {}) {
         busy(btn, true, 'Récupération en cours…');
         const r = await window.sika.cloudRestore({ phone: $('#cr-phone', el).value, username: $('#cr-user', el).value, password: $('#cr-pw', el).value });
         if (!r.ok) { busy(btn, false, 'Récupérer mes données'); return cloudErr(el, r.error); }
+        if (r.data.cancelled) { busy(btn, false, 'Récupérer mes données'); return cloudErr(el, 'Récupération annulée : vos données actuelles n\'ont pas été modifiées.'); }
         close();
         await afterCloudRestore(r.data, `Bienvenue ${r.data.shop || ''} ! ${r.data.sales} vente(s) et ${r.data.products} produit(s) récupérés. Connectez-vous avec votre identifiant habituel.`);
       };
@@ -493,6 +494,7 @@ function cloudRescueModal(phone = '') {
         cloudErr(el, ''); const btn = $('#rs-ok', el); busy(btn, true, 'Récupération en cours…');
         const r = await window.sika.cloudRescueFinish({ code: $('#rs-ans', el).value });
         if (!r.ok) { busy(btn, false, 'Récupérer mes données'); return cloudErr(el, r.error); }
+        if (r.data.cancelled) { busy(btn, false, 'Récupérer mes données'); return cloudErr(el, 'Récupération annulée : vos données actuelles n\'ont pas été modifiées.'); }
         close(); S.user = null; await boot();
         newPasswordModal(r.data.users, `<b>Vos données sont récupérées</b> (${r.data.sales} vente(s), ${r.data.products} produit(s)). Choisissez maintenant un nouveau mot de passe.`);
       });
