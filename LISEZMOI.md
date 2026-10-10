@@ -86,7 +86,7 @@ Un code ne marche qu'une fois, sur ce PC-là. Seul votre fichier SikaGest-Admin.
 
 À l'installation, le client indique son entreprise, son nom, son téléphone, sa ville, son quartier et son activité. Dès qu'il a Internet, SikaGest envoie ces coordonnées et la version installée au serveur du fournisseur (Supabase). Ensuite, le logiciel signale sa présence toutes les 20 minutes. Aucune donnée commerciale n'est envoyée.
 
-Dans **SikaGest-Admin.html → Installations en direct**, vous voyez tous vos clients avec un lien WhatsApp et Appeler, la zone, la version installée, la date d'installation et l'activité récente (« En ligne » si le logiciel est ouvert). Vous pouvez aussi ajouter vos notes et exporter la liste. Seul le compte rubendjoke79@gmail.com, une fois son e-mail confirmé, peut lire cette liste.
+Dans **SikaGest-Admin.html → Installations en direct**, vous voyez tous vos clients avec un lien WhatsApp et Appeler, la zone, la version installée, la date d'installation et l'activité récente (« En ligne » si le logiciel est ouvert). Vous pouvez aussi ajouter vos notes et exporter la liste. Seul le compte sikagest.contact@gmail.com, une fois son e-mail confirmé, peut lire cette liste.
 
 ## Sauvegarde en ligne chiffrée
 
